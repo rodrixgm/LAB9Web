@@ -47,11 +47,30 @@ export async function getAllProperties(req: Request, res: Response): Promise<voi
     };
 
     // Delegamos al repositorio
-    const properties = await propertyRepository.findAll(filters);
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 10;
+    if (!Number.isInteger(page) || page <= 0 || !Number.isInteger(limit) || limit <= 0) {
+    res.status(400).json({
+      success: false,
+      error: {
+        message: 'Los parámetros page y limit deben ser números enteros positivos',
+        code: 'VALIDATION_ERROR',
+      },
+    });
+    return;
+}
+    const result = await propertyRepository.findAll(filters, page, limit);
+    const pages = Math.ceil(result.total / limit);
 
     res.json({
       success: true,
-      data: properties,
+      data: result.data,
+      meta: {
+        total: result.total,
+        page,
+        limit,
+        pages,
+      },
     });
   } catch (error) {
     console.error('Error al obtener propiedades:', error);
@@ -72,7 +91,16 @@ export async function getAllProperties(req: Request, res: Response): Promise<voi
 export async function getPropertyById(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-
+    if (typeof id !== 'string') {
+    res.status(400).json({
+    success: false,
+    error: {
+      message: 'ID de propiedad inválido',
+      code: 'VALIDATION_ERROR',
+    },
+    });
+  return;
+  }
     const property = await propertyRepository.findById(id);
 
     if (!property) {
@@ -151,6 +179,16 @@ export async function createProperty(req: Request, res: Response): Promise<void>
 export async function updateProperty(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    if (typeof id !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: {
+          message: 'ID de propiedad inválido',
+          code: 'VALIDATION_ERROR',
+        },
+      });
+      return;
+    }
 
     // Validamos el body
     const validationResult = updatePropertySchema.safeParse(req.body);
@@ -204,7 +242,16 @@ export async function updateProperty(req: Request, res: Response): Promise<void>
 export async function deleteProperty(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-
+    if (typeof id !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: {
+          message: 'ID de propiedad inválido',
+          code: 'VALIDATION_ERROR',
+        },
+      });
+      return;
+    }
     // Delegamos la eliminación al repositorio
     const deleted = await propertyRepository.delete(id);
 

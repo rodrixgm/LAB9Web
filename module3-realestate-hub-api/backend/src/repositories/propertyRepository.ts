@@ -60,6 +60,11 @@ interface PrismaProperty {
   updatedAt: Date;
 }
 
+interface PaginatedPropertiesResult {
+  data: Property[];
+  total: number;
+}
+
 // =============================================================================
 // TRANSFORMADORES
 // =============================================================================
@@ -121,15 +126,21 @@ export const propertyRepository = {
   /**
    * Busca todas las propiedades con filtros opcionales.
    */
-  async findAll(filters?: PropertyFilters): Promise<Property[]> {
+  async findAll(filters?: PropertyFilters, page =1, limit = 10): Promise<PaginatedPropertiesResult> {
     const where = buildWhereClause(filters);
-
+    const skip = (page - 1) * limit;
+    const total = await prisma.property.count({where});
     const properties = await prisma.property.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
     });
 
-    return properties.map(toProperty);
+    return {
+      data: properties.map(toProperty),
+      total,
+    };
   },
 
   /**
